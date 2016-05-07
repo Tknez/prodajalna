@@ -48,7 +48,7 @@ function davcnaStopnja(izvajalec, zanr) {
 // Prikaz seznama pesmi na strani
 streznik.get('/', function(zahteva, odgovor) {
   //console.log(zahteva.headers.referer);
-  if (zahteva.headers.referer == "https://ide.c9.io/tknez/prodajalna") {
+  if (zahteva.headers.referer == "https://ide.c9.io/tknez/prodajalna" || zahteva.headers.referer == undefined) {
       odgovor.redirect('/prijava') 
   }
   else {

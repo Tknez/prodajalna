@@ -133,7 +133,17 @@ var pesmiIzRacuna = function(racunId, callback) {
     Track.TrackId IN (SELECT InvoiceLine.TrackId FROM InvoiceLine, Invoice \
     WHERE InvoiceLine.InvoiceId = Invoice.InvoiceId AND Invoice.InvoiceId = " + racunId + ")",
     function(napaka, vrstice) {
-      console.log(vrstice);
+      if (napaka) {
+        console.log("Napaka pesmiIzRacuna")
+        callback(false)
+      }
+      else {
+        for (var i=0; i<vrstice.length; i++) {
+          vrstice[i].stopnja = davcnaStopnja((vrstice[i].opisArtikla.split(' (')[1]).split(')')[0], vrstice[i].zanr);
+        }
+        //console.log(vrstice);
+        callback(vrstice,racunId);
+      }
     })
 }
 
@@ -142,13 +152,56 @@ var strankaIzRacuna = function(racunId, callback) {
     pb.all("SELECT Customer.* FROM Customer, Invoice \
             WHERE Customer.CustomerId = Invoice.CustomerId AND Invoice.InvoiceId = " + racunId,
     function(napaka, vrstice) {
-      console.log(vrstice);
+      if (napaka) {
+        console.log("Napaka strankaIzRacuna")
+        callback(false)
+      }
+      else {
+        //console.log(vrstice[0]);
+        callback(vrstice[0]);
+      }
     })
 }
 
 // Izpis računa v HTML predstavitvi na podlagi podatkov iz baze
 streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
-  odgovor.end();
+  var form = new formidable.IncomingForm();
+  
+  form.parse(zahteva, function (napaka, polja, datoteke) {
+    
+    //console.log(zahteva.params);
+    var racunId = polja.seznamRacunov;
+    
+    //console.log(racunId);
+    
+    pesmiIzRacuna(racunId, function(pesmi,racunId) {
+      strankaIzRacuna(racunId, function(stranka){
+        //console.log(stranka);
+        
+        if (!pesmi) {
+          odgovor.sendStatus(500);
+        } else if (pesmi.length == 0) {
+          odgovor.send("<p>Računa ni mogoče pripraviti, \
+            saj nobena pesem ni bila izbrana!</p>");
+        } else {
+          odgovor.setHeader('content-type', 'text/xml');
+          odgovor.render('eslog', {
+            vizualiziraj: true,
+            postavkeRacuna: pesmi,
+            NazivPartnerja1: stranka.FirstName + " " + stranka.LastName,
+            NazivPartnerja2: stranka.Company,
+            Ulica1: stranka.Address,
+            Kraj: stranka.City,
+            NazivDrzave: stranka.Country,
+            PostnaStevilka: stranka.PostalCode,
+            StevilkaKomunikacije1: stranka.Phone,
+            StevilkaKomunikacije2: stranka.Fax,
+            ImeOsebe: stranka.FirstName + " " + stranka.LastName + " (" + stranka.Email + ")"
+          })  
+        }
+      });
+    }) 
+  });
 })
 
 // Izpis računa v HTML predstavitvi ali izvorni XML obliki

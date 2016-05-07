@@ -233,12 +233,22 @@ streznik.post('/stranka', function(zahteva, odgovor) {
   var form = new formidable.IncomingForm();
   
   form.parse(zahteva, function (napaka1, polja, datoteke) {
+    console.log(polja);
+    console.log(datoteke);
     odgovor.redirect('/')
   });
 })
 
+
+streznik.get('/', function(zahteva, odgovor) {
+  
+  console.log("EVO");
+})
+
 // Odjava stranke
 streznik.post('/odjava', function(zahteva, odgovor) {
+    if (zahteva.session.kosarica)
+      zahteva.session.kosarica = [];
     odgovor.redirect('/prijava') 
 })
 

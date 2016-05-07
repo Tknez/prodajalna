@@ -27,6 +27,8 @@ streznik.use(
 );
 
 var razmerje_usd_eur = 0.877039116;
+var sporocilo = "";
+var IdOsebe;
 
 function davcnaStopnja(izvajalec, zanr) {
   switch (izvajalec) {
@@ -213,18 +215,31 @@ streznik.post('/izpisiRacunBaza', function(zahteva, odgovor) {
 // Izpis računa v HTML predstavitvi ali izvorni XML obliki
 streznik.get('/izpisiRacun/:oblika', function(zahteva, odgovor) {
   pesmiIzKosarice(zahteva, function(pesmi) {
-    if (!pesmi) {
-      odgovor.sendStatus(500);
-    } else if (pesmi.length == 0) {
-      odgovor.send("<p>V košarici nimate nobene pesmi, \
-        zato računa ni mogoče pripraviti!</p>");
-    } else {
-      odgovor.setHeader('content-type', 'text/xml');
-      odgovor.render('eslog', {
-        vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
-        postavkeRacuna: pesmi
-      })  
-    }
+    console.log(IdOsebe)
+    vrniStranko(IdOsebe, function(stranka) {
+        console.log(stranka)
+        if (!pesmi) {
+          odgovor.sendStatus(500);
+        } else if (pesmi.length == 0) {
+          odgovor.send("<p>V košarici nimate nobene pesmi, \
+            zato računa ni mogoče pripraviti!</p>");
+        } else {
+          odgovor.setHeader('content-type', 'text/xml');
+          odgovor.render('eslog', {
+            vizualiziraj: zahteva.params.oblika == 'html' ? true : false,
+            postavkeRacuna: pesmi,
+            NazivPartnerja1: stranka.FirstName + " " + stranka.LastName,
+            NazivPartnerja2: stranka.Company,
+            Ulica1: stranka.Address,
+            Kraj: stranka.City,
+            NazivDrzave: stranka.Country,
+            PostnaStevilka: stranka.PostalCode,
+            StevilkaKomunikacije1: stranka.Phone,
+            StevilkaKomunikacije2: stranka.Fax,
+            ImeOsebe: stranka.FirstName + " " + stranka.LastName + " (" + stranka.Email + ")"
+          })  
+        }
+    })
   })
 })
 
@@ -242,6 +257,20 @@ var vrniStranke = function(callback) {
   );
 }
 
+// Vrni stranko iz podatkovne baze
+var vrniStranko = function(customerId, callback) {
+  pb.all("SELECT * FROM Customer \
+            WHERE Customer.CustomerId = " + customerId,
+    function(napaka, vrstice) {
+      //console.log(vrstice[0])
+      if (napaka)
+        callback(false);
+      else 
+        callback(vrstice[0]);
+    }
+  );
+}
+
 // Vrni račune iz podatkovne baze
 var vrniRacune = function(callback) {
   pb.all("SELECT Customer.FirstName || ' ' || Customer.LastName || ' (' || Invoice.InvoiceId || ') - ' || date(Invoice.InvoiceDate) AS Naziv, \
@@ -253,8 +282,6 @@ var vrniRacune = function(callback) {
     }
   );
 }
-
-var sporocilo = "";
 
 // Registracija novega uporabnika
 streznik.post('/prijava', function(zahteva, odgovor) {
@@ -297,7 +324,10 @@ streznik.post('/stranka', function(zahteva, odgovor) {
   var form = new formidable.IncomingForm();
   
   form.parse(zahteva, function (napaka1, polja, datoteke) {
-    //console.log(polja);
+    
+    IdOsebe = polja.seznamStrank
+    //console.log(IdOsebe)
+    
     odgovor.redirect('/')
   });
 })
